@@ -1,0 +1,82 @@
+# Puppet templated vhost, butchered from https://github.com/stahnma/puppet-module-askbot
+
+WSGIDaemonProcess askbot user=<%= scope.lookupvar('web_user') -%> group=<%= scope.lookupvar('web_group') -%> maximum-requests=1000 display-name=askbot processes=<%= @processorcount -%> threads=1 shutdown-timeout=10 python-path=/etc/askbot/sites/ask
+<% if @osfamily =~ /redhat/i -%>
+WSGISocketPrefix run/wsgi
+<% end -%>
+WSGIRestrictStdout On
+WSGIRestrictSignal Off
+WSGIPythonOptimize 1
+
+<% if ssl == true %>
+# http://httpd.apache.org/docs/2.2/mod/mod_ssl.html
+SSLSessionCache shm:/var/run/apache2/sslcache(512000)
+SSLMutex sem
+<% end %>
+
+<VirtualHost <%= vhost_name %>:<%= port %>>
+  ServerName <%= srvname %>
+<% if serveraliases.is_a? Array -%>
+<%   serveraliases.each do |name| -%><%= "  ServerAlias #{name}\n" %><% end -%>
+<% elsif serveraliases != '' -%>
+<%=   "  ServerAlias #{serveraliases}" -%>
+<% end -%>
+
+<% if ssl == true %>
+  SSLEngine on
+  SSLCertificateFile <%= scope.lookupvar('ssl::params::ssl_path') %>/certs/pl.cert
+  SSLCertificateKeyFile <%= scope.lookupvar('ssl::params::ssl_path') %>/private/pl.key
+  SSLCertificateChainFile <%= scope.lookupvar('ssl::params::ssl_path') %>/certs/pl_inter.cert
+<% end %>
+
+  Alias /m/  <%= scope.lookupvar('askbot_home') -%>/skins/
+  Alias /admin/media/ <%= @py_location -%>/django/contrib/admin/media/
+  Alias /upfiles/ <%= scope.lookupvar('askbot_home')-%>/upfiles/ask/
+
+  # http://httpd.apache.org/docs/current/mod/mod_expires.html
+  <IfModule mod_expires.c>
+    <FilesMatch "\.(jpe?g|png|gif|js|css)$">
+      ExpiresActive On
+      ExpiresDefault "access plus 6 hours"
+    </FilesMatch>
+  </IfModule>
+
+  <Directory <%= scope.lookupvar('askbot_home') -%>/skins>
+    <IfModule mod_deflate.c>
+      SetOutputFilter DEFLATE
+    </IfModule>
+    Order deny,allow
+    Allow from all
+  </Directory>
+
+
+  WSGIScriptAlias /  /usr/sbin/askbot.wsgi
+
+  <Location />
+    <IfModule mod_deflate.c>
+      SetOutputFilter DEFLATE
+    </IfModule>
+    WSGIProcessGroup askbot
+    Order deny,allow
+    Allow from all
+  </Location>
+
+  <Directory <%= scope.lookupvar('askbot_home')-%>/upfiles/ask>
+      Order deny,allow
+      Allow from all
+  </Directory>
+
+  ErrorLog /var/log/apache2/<%= name %>_error.log
+  LogLevel warn
+  CustomLog /var/log/apache2/<%= name %>_access.log combined
+
+  ServerSignature Off
+
+  <% if block_scm == "true" -%>
+  # Block access to SCM directories. Stolen from
+  # http://stackoverflow.com/questions/398008/deny-access-to-svn-folders-on-apache
+  <DirectoryMatch .*\.(svn|git|bzr)/.*>
+      Deny From All
+  </DirectoryMatch>
+  <% end -%>
+</VirtualHost>
