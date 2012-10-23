@@ -13,7 +13,8 @@ class askbot (
   include askbot::postgres
   include askbot::opinions
 
-  motd::register{ "askbot Q&A site at ${vhost}": }
+#TODO Uncomment
+#  motd::register{ "askbot Q&A site at ${vhost}": }
 
   # Resource Defaults
   Exec {
@@ -194,10 +195,11 @@ class askbot (
     subscribe  => File['/etc/askbot/sites/ask/config/settings.py'],
   }
 
-  apache::vhost::httptohttps{ $vhost:
-    priority   => 90,
-    require    => Apache::Vhost["${vhost}_ssl"],
-  }
+#TODO Uncomment
+#  apache::vhost::httptohttps{ $vhost:
+#    priority   => 90,
+#    require    => Apache::Vhost["${vhost}_ssl"],
+#  }
 
   # Compress the pages in askbot, as we can.
   a2mod{ 'deflate':
@@ -226,6 +228,7 @@ class askbot (
 
   # Backup using our bacula-fu, if we want to.
   if $backup_db == true {
-    bacula::postgres{ $askbot::params::askbot_db_name: }
+#TODO Uncomment
+#    bacula::postgres{ $askbot::params::askbot_db_name: }
   }
 }

@@ -1,0 +1,4 @@
+name 'fhrbek-askbot_role'
+version '0.0.0'
+
+dependency 'stahnma/askbot', '>=0.0.1'
